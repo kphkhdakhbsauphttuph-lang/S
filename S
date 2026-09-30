@@ -1,0 +1,85 @@
+-- ========================================================
+-- ESP Box Script (Toggleable / มีระบบเปิด-ปิด)
+-- ========================================================
+
+local ESPSettings = {
+    Enabled = false,            -- สถานะเปิด/ปิด
+    ToggleKey = "e",            -- ปุ่มสำหรับเปิด/ปิด (กด E)
+    BoxColor = Color3.fromRGB(255, 0, 0), -- สีของกรอบ (สีแดง)
+    FillTransparency = 0.5,     -- ความโปร่งใสของสีด้านใน (0-1)
+    OutlineTransparency = 0     -- ความโปร่งใสของเส้นขอบ (0-1)
+}
+
+-- ตารางเก็บวัตถุ ESP
+local ESPFolder = Instance.new("Folder", game.CoreGui)
+ESPFolder.Name = "ESP_Container"
+
+-- ฟังก์ชันสร้างกรอบ ESP ให้เป้าหมาย
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+
+    local function ApplyESP(character)
+        if not character then return end
+        
+        -- ลบ ESP เก่าถ้ามีอยู่
+        if character:FindFirstChild("ESP_Highlight") then
+            character.ESP_Highlight:Destroy()
+        end
+
+        -- สร้าง Highlight Object
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "ESP_Highlight"
+        highlight.Adornee = character
+        highlight.FillColor = ESPSettings.BoxColor
+        highlight.OutlineColor = ESPSettings.BoxColor
+        highlight.FillTransparency = ESPSettings.FillTransparency
+        highlight.OutlineTransparency = ESPSettings.OutlineTransparency
+        highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop -- มองเห็นทะลุกำแพง
+        highlight.Enabled = ESPSettings.Enabled
+        highlight.Parent = character
+    end
+
+    -- ตรวจจับเมื่อตัวละครเกิด
+    player.CharacterAdded:Connect(ApplyESP)
+    if player.Character then
+        ApplyESP(player.Character)
+    end
+end
+
+-- ฟังก์ชันสลับสถานะ เปิด/ปิด ESP
+local function ToggleESP()
+    ESPSettings.Enabled = not ESPSettings.Enabled
+    
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("ESP_Highlight") then
+            player.Character.ESP_Highlight.Enabled = ESPSettings.Enabled
+        end
+    end
+
+    if ESPSettings.Enabled then
+        print("[ESP Box]: Status -> ON")
+    else
+        print("[ESP Box]: Status -> OFF")
+    end
+end
+
+-- ========================================================
+-- ระบบทำงานและตรวจจับผู้เล่นใหม่
+-- ========================================================
+
+-- โหลด ESP ให้ผู้เล่นทุกคนในเซิร์ฟเวอร์
+for _, player in ipairs(Players:GetPlayers()) do
+    CreateESP(player)
+end
+
+-- เมื่อมีผู้เล่นคนใหม่เข้ามา
+Players.PlayerAdded:Connect(CreateESP)
+
+-- จับเหตุการณ์กดปุ่มเปิด-ปิด
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode[ESPSettings.ToggleKey:upper()] then
+        ToggleESP()
+    end
+end)
